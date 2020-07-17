@@ -47,9 +47,14 @@ export default class ResizeObserverController {
      * @returns {void}
      */
     removeObserver(observer) {
-        for (const resizeObserverWindowController of this.resizeObserverWindowControllers_.values()){
+        this.resizeObserverWindowControllers_.forEach((resizeObserverWindowController, controllerWindow) => {
           resizeObserverWindowController.removeObserver(observer);
-        }
+
+          if (!resizeObserverWindowController.hasObservers()) {
+            console.log('Deleting unobserved window...');
+            this.resizeObserverWindowControllers_.delete(controllerWindow)
+          }
+        });
     }
 
     /**

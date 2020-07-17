@@ -100,6 +100,15 @@ export default class ResizeObserverWindowController {
     }
 
     /**
+     * Whether this controller has any observers.
+     *
+     * @returns {boolean}
+     */
+    hasObservers() {
+      return this.observers_.length > 0;
+    }
+
+    /**
      * Invokes the update of observers. It will continue running updates insofar
      * it detects changes.
      *
