@@ -200,4 +200,15 @@ export default class ResizeObserverSPI {
     hasActive() {
         return this.activeObservations_.length > 0;
     }
+
+    /**
+     * Returns all the window objects that the targets are contained in.
+     *
+     * @returns {Array<Window>}
+     */
+    getTargetWindows() {
+      const targets = Array.from(this.observations_.keys());
+      const uniqueTargetWindows = new Set(targets.map(getWindowOf));
+      return [...uniqueTargetWindows];
+    }
 }

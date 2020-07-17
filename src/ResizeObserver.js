@@ -19,12 +19,15 @@ class ResizeObserver {
      *      dimensions of the observed elements change.
      */
     constructor(callback) {
+        console.log('Creating Resize Observer 1');
         if (!(this instanceof ResizeObserver)) {
             throw new TypeError('Cannot call a class as a function.');
         }
         if (!arguments.length) {
             throw new TypeError('1 argument required, but only 0 present.');
         }
+
+        console.log('Creating a new resize observer 2');
 
         const controller = ResizeObserverController.getInstance();
         const observer = new ResizeObserverSPI(callback, controller, this);
