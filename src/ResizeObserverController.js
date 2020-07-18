@@ -36,9 +36,9 @@ export default class ResizeObserverController {
             }
         });
 
-        for (const resizeObserverWindowController of this.resizeObserverWindowControllers_.values()) {
+        this.resizeObserverWindowControllers_.forEach(resizeObserverWindowController => {
             resizeObserverWindowController.addObserver(observer);
-        }
+        });
     }
 
     /**
