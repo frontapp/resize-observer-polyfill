@@ -207,8 +207,10 @@ export default class ResizeObserverSPI {
      * @returns {Array<Window>}
      */
     getTargetWindows() {
-      const targets = Array.from(this.observations_.keys());
-      const uniqueTargetWindows = new Set(targets.map(getWindowOf));
-      return [...uniqueTargetWindows];
+        const targets = Array.from(this.observations_.keys());
+        const uniqueTargetWindows = new Set(targets.map(getWindowOf));
+
+        return Array.from(uniqueTargetWindows);
+        // Return [...uniqueTargetWindows];
     }
 }

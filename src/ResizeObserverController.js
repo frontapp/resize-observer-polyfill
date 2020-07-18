@@ -26,17 +26,18 @@ export default class ResizeObserverController {
      */
     addObserver(observer) {
         const targetWindows = observer.getTargetWindows();
-        
+
         targetWindows.forEach(targetWindow => {
-          if (!this.resizeObserverWindowControllers_.has(targetWindow)) {
-            console.log('Creating a window controller for targetWindow:');
-            console.log(targetWindow);
-            this.resizeObserverWindowControllers_.set(targetWindow, new ResizeObserverWindowController(targetWindow))
-          }
+            if (!this.resizeObserverWindowControllers_.has(targetWindow)) {
+                this.resizeObserverWindowControllers_.set(
+                    targetWindow,
+                    new ResizeObserverWindowController(targetWindow)
+                );
+            }
         });
-         
-        for (const resizeObserverWindowController of this.resizeObserverWindowControllers_.values()){
-          resizeObserverWindowController.addObserver(observer);
+
+        for (const resizeObserverWindowController of this.resizeObserverWindowControllers_.values()) {
+            resizeObserverWindowController.addObserver(observer);
         }
     }
 
@@ -48,12 +49,11 @@ export default class ResizeObserverController {
      */
     removeObserver(observer) {
         this.resizeObserverWindowControllers_.forEach((resizeObserverWindowController, controllerWindow) => {
-          resizeObserverWindowController.removeObserver(observer);
+            resizeObserverWindowController.removeObserver(observer);
 
-          if (!resizeObserverWindowController.hasObservers()) {
-            console.log('Deleting unobserved window...');
-            this.resizeObserverWindowControllers_.delete(controllerWindow)
-          }
+            if (!resizeObserverWindowController.hasObservers()) {
+                this.resizeObserverWindowControllers_.delete(controllerWindow);
+            }
         });
     }
 
@@ -63,9 +63,9 @@ export default class ResizeObserverController {
      * @returns {void}
      */
     refresh() {
-        for (const resizeObserverWindowController of this.resizeObserverWindowControllers_.values()){
-          resizeObserverWindowController.refresh();
-        }
+        this.resizeObserverWindowControllers_.forEach(resizeObserverWindowController => {
+            resizeObserverWindowController.refresh();
+        });
     }
 
     /**

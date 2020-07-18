@@ -53,6 +53,7 @@ export default class ResizeObserverWindowController {
     /**
      * Creates a new instance of ResizeObserverWindowController.
      *
+     * @param {Window} targetWindow - Window in which elements will be observed.
      * @private
      */
     constructor(targetWindow) {
@@ -105,7 +106,7 @@ export default class ResizeObserverWindowController {
      * @returns {boolean}
      */
     hasObservers() {
-      return this.observers_.length > 0;
+        return this.observers_.length > 0;
     }
 
     /**
@@ -231,18 +232,5 @@ export default class ResizeObserverWindowController {
         if (isReflowProperty) {
             this.refresh();
         }
-    }
-
-    /**
-     * Returns instance of the ResizeObserverController.
-     *
-     * @returns {ResizeObserverController}
-     */
-    static getInstance() {
-        if (!this.instance_) {
-            this.instance_ = new ResizeObserverController();
-        }
-
-        return this.instance_;
     }
 }
