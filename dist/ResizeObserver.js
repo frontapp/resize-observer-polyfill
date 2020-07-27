@@ -219,15 +219,16 @@
     // Check if MutationObserver is available.
     var mutationObserverSupported = typeof MutationObserver !== 'undefined';
     /**
-     * Singleton controller class which handles updates of ResizeObserver instances.
+     * Controller class which handles updates of ResizeObserver instances for a particular Window.
      */
-    var ResizeObserverController = /** @class */ (function () {
+    var ResizeObserverWindowController = /** @class */ (function () {
         /**
-         * Creates a new instance of ResizeObserverController.
+         * Creates a new instance of ResizeObserverWindowController.
          *
+         * @param {Window} targetWindow - Window in which elements will be observed.
          * @private
          */
-        function ResizeObserverController() {
+        function ResizeObserverWindowController(targetWindow) {
             /**
              * Indicates whether DOM listeners have been added.
              *
@@ -252,6 +253,13 @@
              * @private {Array<ResizeObserverSPI>}
              */
             this.observers_ = [];
+            /**
+             * The window of the targets being observed.
+             *
+             * @private {Window}
+             */
+            this.targetWindow_ = null;
+            this.targetWindow_ = targetWindow;
             this.onTransitionEnd_ = this.onTransitionEnd_.bind(this);
             this.refresh = throttle(this.refresh.bind(this), REFRESH_DELAY);
         }
@@ -261,7 +269,7 @@
          * @param {ResizeObserverSPI} observer - Observer to be added.
          * @returns {void}
          */
-        ResizeObserverController.prototype.addObserver = function (observer) {
+        ResizeObserverWindowController.prototype.addObserver = function (observer) {
             if (!~this.observers_.indexOf(observer)) {
                 this.observers_.push(observer);
             }
@@ -276,7 +284,7 @@
          * @param {ResizeObserverSPI} observer - Observer to be removed.
          * @returns {void}
          */
-        ResizeObserverController.prototype.removeObserver = function (observer) {
+        ResizeObserverWindowController.prototype.removeObserver = function (observer) {
             var observers = this.observers_;
             var index = observers.indexOf(observer);
             // Remove observer if it's present in registry.
@@ -289,12 +297,20 @@
             }
         };
         /**
+         * Whether this controller has any observers.
+         *
+         * @returns {boolean}
+         */
+        ResizeObserverWindowController.prototype.hasObservers = function () {
+            return this.observers_.length > 0;
+        };
+        /**
          * Invokes the update of observers. It will continue running updates insofar
          * it detects changes.
          *
          * @returns {void}
          */
-        ResizeObserverController.prototype.refresh = function () {
+        ResizeObserverWindowController.prototype.refresh = function () {
             var changesDetected = this.updateObservers_();
             // Continue running updates if changes have been detected as there might
             // be future ones caused by CSS transitions.
@@ -310,7 +326,7 @@
          * @returns {boolean} Returns "true" if any observer has detected changes in
          *      dimensions of it's elements.
          */
-        ResizeObserverController.prototype.updateObservers_ = function () {
+        ResizeObserverWindowController.prototype.updateObservers_ = function () {
             // Collect observers that have active observations.
             var activeObservers = this.observers_.filter(function (observer) {
                 return observer.gatherActive(), observer.hasActive();
@@ -329,20 +345,20 @@
          * @private
          * @returns {void}
          */
-        ResizeObserverController.prototype.connect_ = function () {
+        ResizeObserverWindowController.prototype.connect_ = function () {
             // Do nothing if running in a non-browser environment or if listeners
             // have been already added.
-            if (!isBrowser || this.connected_) {
+            if (!isBrowser || !this.targetWindow_ || this.connected_) {
                 return;
             }
             // Subscription to the "Transitionend" event is used as a workaround for
             // delayed transitions. This way it's possible to capture at least the
             // final state of an element.
-            document.addEventListener('transitionend', this.onTransitionEnd_);
-            window.addEventListener('resize', this.refresh);
+            this.targetWindow_.document.addEventListener('transitionend', this.onTransitionEnd_);
+            this.targetWindow_.addEventListener('resize', this.refresh);
             if (mutationObserverSupported) {
                 this.mutationsObserver_ = new MutationObserver(this.refresh);
-                this.mutationsObserver_.observe(document, {
+                this.mutationsObserver_.observe(this.targetWindow_.document, {
                     attributes: true,
                     childList: true,
                     characterData: true,
@@ -350,7 +366,7 @@
                 });
             }
             else {
-                document.addEventListener('DOMSubtreeModified', this.refresh);
+                this.targetWindow_.document.addEventListener('DOMSubtreeModified', this.refresh);
                 this.mutationEventsAdded_ = true;
             }
             this.connected_ = true;
@@ -361,19 +377,19 @@
          * @private
          * @returns {void}
          */
-        ResizeObserverController.prototype.disconnect_ = function () {
+        ResizeObserverWindowController.prototype.disconnect_ = function () {
             // Do nothing if running in a non-browser environment or if listeners
             // have been already removed.
             if (!isBrowser || !this.connected_) {
                 return;
             }
-            document.removeEventListener('transitionend', this.onTransitionEnd_);
-            window.removeEventListener('resize', this.refresh);
+            this.targetWindow_.document.removeEventListener('transitionend', this.onTransitionEnd_);
+            this.targetWindow_.removeEventListener('resize', this.refresh);
             if (this.mutationsObserver_) {
                 this.mutationsObserver_.disconnect();
             }
             if (this.mutationEventsAdded_) {
-                document.removeEventListener('DOMSubtreeModified', this.refresh);
+                this.targetWindow_.document.removeEventListener('DOMSubtreeModified', this.refresh);
             }
             this.mutationsObserver_ = null;
             this.mutationEventsAdded_ = false;
@@ -386,7 +402,7 @@
          * @param {TransitionEvent} event
          * @returns {void}
          */
-        ResizeObserverController.prototype.onTransitionEnd_ = function (_a) {
+        ResizeObserverWindowController.prototype.onTransitionEnd_ = function (_a) {
             var _b = _a.propertyName, propertyName = _b === void 0 ? '' : _b;
             // Detect whether transition may affect dimensions of an element.
             var isReflowProperty = transitionKeys.some(function (key) {
@@ -395,6 +411,64 @@
             if (isReflowProperty) {
                 this.refresh();
             }
+        };
+        return ResizeObserverWindowController;
+    }());
+
+    /**
+     * Singleton controller class which handles updates of ResizeObserver instances.
+     */
+    var ResizeObserverController = /** @class */ (function () {
+        function ResizeObserverController() {
+            /**
+             * Map of Window to ResizeObserverWindowController instances.
+             *
+             * @private {Map<Window, ResizeObserverWindowController>}
+             */
+            this.resizeObserverWindowControllers_ = new Map();
+        }
+        /**
+         * Adds observer to observers list.
+         *
+         * @param {ResizeObserverSPI} observer - Observer to be added.
+         * @returns {void}
+         */
+        ResizeObserverController.prototype.addObserver = function (observer) {
+            var _this = this;
+            var targetWindows = observer.getTargetWindows();
+            targetWindows.forEach(function (targetWindow) {
+                if (!_this.resizeObserverWindowControllers_.has(targetWindow)) {
+                    _this.resizeObserverWindowControllers_.set(targetWindow, new ResizeObserverWindowController(targetWindow));
+                }
+            });
+            this.resizeObserverWindowControllers_.forEach(function (resizeObserverWindowController) {
+                resizeObserverWindowController.addObserver(observer);
+            });
+        };
+        /**
+         * Removes observer from observers list.
+         *
+         * @param {ResizeObserverSPI} observer - Observer to be removed.
+         * @returns {void}
+         */
+        ResizeObserverController.prototype.removeObserver = function (observer) {
+            var _this = this;
+            this.resizeObserverWindowControllers_.forEach(function (resizeObserverWindowController, controllerWindow) {
+                resizeObserverWindowController.removeObserver(observer);
+                if (!resizeObserverWindowController.hasObservers()) {
+                    _this.resizeObserverWindowControllers_.delete(controllerWindow);
+                }
+            });
+        };
+        /**
+         * Invokes the update of observers for all windows.
+         *
+         * @returns {void}
+         */
+        ResizeObserverController.prototype.refresh = function () {
+            this.resizeObserverWindowControllers_.forEach(function (resizeObserverWindowController) {
+                resizeObserverWindowController.refresh();
+            });
         };
         /**
          * Returns instance of the ResizeObserverController.
@@ -879,6 +953,17 @@
          */
         ResizeObserverSPI.prototype.hasActive = function () {
             return this.activeObservations_.length > 0;
+        };
+        /**
+         * Returns all the window objects that the targets are contained in.
+         *
+         * @returns {Array<Window>}
+         */
+        ResizeObserverSPI.prototype.getTargetWindows = function () {
+            var targets = Array.from(this.observations_.keys());
+            var uniqueTargetWindows = new Set(targets.map(getWindowOf));
+            return Array.from(uniqueTargetWindows);
+            // Return [...uniqueTargetWindows];
         };
         return ResizeObserverSPI;
     }());
